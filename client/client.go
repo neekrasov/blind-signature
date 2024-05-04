@@ -16,7 +16,7 @@ import (
 
 func Client() error {
 	fmt.Println("Generate keys...")
-	clientPublicKey, clientPrivateKey, err := rsa.GenerateKeys(256)
+	clientPublicKey, _, err := rsa.GenerateKeys(256)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate keys")
 	}
@@ -38,19 +38,19 @@ func Client() error {
 	counterReader := bufio.NewReader(counterConn)
 
 	fmt.Println("Sending client public key", clientPublicKey.E())
-	if err := tcp.Send(registrarConn, string(clientPublicKey.ToBytes())); err != nil {
+	if err := tcp.Send(registrarConn, clientPublicKey.ToBytes()); err != nil {
 		return errors.Wrap(err, "failed to send client's public key")
 	}
 
 	fmt.Println("Getting registrar public key...")
-	var registrarPubKeyStr string
-	if err := tcp.Read(registrarReader, &registrarPubKeyStr); err != nil {
+	var registrarPubKeyBytes []byte
+	if err := tcp.Read(registrarReader, &registrarPubKeyBytes); err != nil {
 		return errors.Wrap(err, "failed to read registrar's public key")
 	}
 
 	fmt.Println("Parsing registrar public key...")
 	registrarPublicKey := &rsa.PublicKey{}
-	if err := registrarPublicKey.FromBytes([]byte(registrarPubKeyStr)); err != nil {
+	if err := registrarPublicKey.FromBytes(registrarPubKeyBytes); err != nil {
 		return errors.Wrap(err, "failed to parse registrar public key")
 	}
 	fmt.Println("Registrar public key", registrarPublicKey.E())
@@ -78,19 +78,19 @@ func Client() error {
 	reb := rsa.Encrypt(r, registrarPublicKey) // r^eb
 	blindedMsg := new(big.Int).Mul(m, reb)    // r^eb -> xr^eb
 	blindedMsg.Mod(blindedMsg, registrarPublicKey.N())
-	blindedMsg = rsa.Sign(blindedMsg, clientPrivateKey) // xr^eb ->(xr^eb)^da
+	// blindedMsg = rsa.Sign(blindedMsg, clientPrivateKey) // xr^eb ->(xr^eb)^da
 
 	fmt.Println("Sending blinded message to registrar", blindedMsg)
-	if err := tcp.Send(registrarConn, string(blindedMsg.Bytes())); err != nil {
+	if err := tcp.Send(registrarConn, blindedMsg.Bytes()); err != nil {
 		return errors.Wrap(err, "failed to send blinded msg to registrar")
 	}
 
 	fmt.Println("Getting registrar signature...")
-	var signedMsg string
-	if err := tcp.Read(registrarReader, &signedMsg); err != nil {
+	var signedMsgBytes []byte
+	if err := tcp.Read(registrarReader, &signedMsgBytes); err != nil {
 		return errors.Wrap(err, "error reading signed msg")
 	}
-	signature := new(big.Int).SetBytes([]byte(signedMsg))
+	signature := new(big.Int).SetBytes(signedMsgBytes)
 	fmt.Println("Registrar signature ", signature)
 
 	fmt.Println("Generating rInverse...")
@@ -106,26 +106,26 @@ func Client() error {
 	fmt.Println("Signature ", signature)
 
 	fmt.Println("Sending registrar public key to counter", registrarPublicKey.E())
-	if err := tcp.Send(counterConn, string(registrarPublicKey.ToBytes())); err != nil {
+	if err := tcp.Send(counterConn, registrarPublicKey.ToBytes()); err != nil {
 		return errors.Wrap(err, "failed to send msg to counter")
 	}
 
 	fmt.Println("Sending vote to counter ", vote)
-	if err := tcp.Send(counterConn, vote); err != nil {
+	if err := tcp.Send(counterConn, []byte(vote)); err != nil {
 		return errors.Wrap(err, "failed to send vote to counter")
 	}
 
 	fmt.Println("Sending signature to counter", signature)
-	if err := tcp.Send(counterConn, string(signature.Bytes())); err != nil {
+	if err := tcp.Send(counterConn, signature.Bytes()); err != nil {
 		return errors.Wrap(err, "failed to send signature to counter")
 	}
 
-	var b string
+	var b []byte
 	if err := tcp.Read(counterReader, &b); err != nil {
 		return errors.Wrap(err, "error reading counter response")
 	}
 
-	if b == "1" {
+	if b[0] == '1' {
 		fmt.Println("OK")
 		return nil
 	}

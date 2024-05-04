@@ -34,26 +34,27 @@ func Counter() error {
 			reader := bufio.NewReader(conn)
 
 			fmt.Println("Getting registrar public key...")
-			var registrarPubKeyMsg string
-			if err := tcp.Read(reader, &registrarPubKeyMsg); err != nil {
+			var registrarPubKeyBytes []byte
+			if err := tcp.Read(reader, &registrarPubKeyBytes); err != nil {
 				fmt.Println("Failed to read  registrar public key:", err)
 				return
 			}
 
 			fmt.Println("Parsing registrar public key...")
 			registrarPublicKey := &rsa.PublicKey{}
-			if err := registrarPublicKey.FromBytes([]byte(registrarPubKeyMsg)); err != nil {
+			if err := registrarPublicKey.FromBytes(registrarPubKeyBytes); err != nil {
 				fmt.Println("Failed to parse registrar public key:", err.Error())
 				return
 			}
 			fmt.Println("Registrar public key ", registrarPublicKey.E())
 
 			fmt.Println("Getting vote...")
-			var vote string
-			if err := tcp.Read(reader, &vote); err != nil {
+			var voteBytes []byte
+			if err := tcp.Read(reader, &voteBytes); err != nil {
 				fmt.Println("Failed to read vote:", err)
 				return
 			}
+			vote := string(voteBytes)
 			fmt.Println("Vote ", vote)
 
 			fmt.Println("Hashing vote...")
@@ -65,19 +66,19 @@ func Counter() error {
 			fmt.Println("Hashed vote...")
 
 			fmt.Println("Getting signature...")
-			var signStr string
-			if err := tcp.Read(reader, &signStr); err != nil {
+			var signBytes []byte
+			if err := tcp.Read(reader, &signBytes); err != nil {
 				fmt.Println("Failed to read vote:", err)
 				return
 			}
-			signature := new(big.Int).SetBytes([]byte(signStr))
+			signature := new(big.Int).SetBytes(signBytes)
 			fmt.Println("Signature ", signature)
 
 			fmt.Println("Verify signature...")
 			if !rsa.Verify(signature, m, registrarPublicKey) {
 				fmt.Println("Verifiing digital signature fail")
 
-				if err := tcp.Send(conn, "0"); err != nil {
+				if err := tcp.Send(conn, []byte("0")); err != nil {
 					fmt.Println("Error write 0 response")
 					return
 				}
@@ -89,7 +90,7 @@ func Counter() error {
 			votes[vote]++
 			fmt.Println("Voting results:", votes)
 
-			if err := tcp.Send(conn, "1"); err != nil {
+			if err := tcp.Send(conn, []byte("1")); err != nil {
 				fmt.Println("Error write 1 response")
 				return
 			}

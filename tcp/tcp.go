@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-func Read(r *bufio.Reader, v *string) error {
+func Read(r *bufio.Reader, v *[]byte) error {
 	lengthBytes, err := r.ReadBytes('\n')
 	if err != nil {
 		return err
@@ -25,14 +25,17 @@ func Read(r *bufio.Reader, v *string) error {
 		return err
 	}
 
-	*v = string(msgBytes)
+	*v = msgBytes
 
 	return nil
 }
 
-func Send(conn net.Conn, data string) error {
-	fmt.Fprintln(conn, len(data))
-	if _, err := conn.Write([]byte(data)); err != nil {
+func Send(conn net.Conn, data []byte) error {
+	if _, err := fmt.Fprintln(conn, len(data)); err != nil {
+		return err
+	}
+
+	if _, err := conn.Write(data); err != nil {
 		return err
 	}
 
