@@ -1,8 +1,6 @@
 package main
 
 import (
-	"blind-signature/rsa"
-	"blind-signature/tcp"
 	"bufio"
 	"crypto/rand"
 	"encoding/json"
@@ -11,6 +9,9 @@ import (
 	"net"
 	"os"
 	"strings"
+
+	"github.com/neekrasov/blind-signature/rsa"
+	"github.com/neekrasov/blind-signature/tcp"
 
 	"github.com/pkg/errors"
 )
@@ -134,12 +135,11 @@ func Client() error {
 		return errors.Wrap(err, "error reading counter response")
 	}
 
-	if b[0] == '1' {
-		fmt.Println("OK")
-		return nil
+	if b[0] != '1' {
+		return errors.New("your vote was not accepted")
 	}
 
-	return errors.New("counter response was not OK")
+	return nil
 }
 
 func main() {

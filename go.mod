@@ -1,4 +1,4 @@
-module blind-signature
+module github.com/neekrasov/blind-signature
 
 go 1.22.2
 

@@ -1,13 +1,14 @@
 package main
 
 import (
-	"blind-signature/rsa"
-	"blind-signature/tcp"
 	"bufio"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"net"
+
+	"github.com/neekrasov/blind-signature/rsa"
+	"github.com/neekrasov/blind-signature/tcp"
 )
 
 func Registrar() error {

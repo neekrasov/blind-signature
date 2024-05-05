@@ -1,11 +1,12 @@
 package main
 
 import (
-	"blind-signature/rsa"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/big"
+
+	"github.com/neekrasov/blind-signature/rsa"
 )
 
 func main() {
