@@ -5,6 +5,7 @@ import (
 	"blind-signature/tcp"
 	"bufio"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net"
@@ -16,7 +17,7 @@ import (
 
 func Client() error {
 	fmt.Println("Generate keys...")
-	clientPublicKey, _, err := rsa.GenerateKeys(256)
+	clientPublicKey, clientPrivateKey, err := rsa.GenerateKeys(512)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate keys")
 	}
@@ -37,8 +38,12 @@ func Client() error {
 	registrarReader := bufio.NewReader(registrarConn)
 	counterReader := bufio.NewReader(counterConn)
 
-	fmt.Println("Sending client public key", clientPublicKey.E())
-	if err := tcp.Send(registrarConn, clientPublicKey.ToBytes()); err != nil {
+	fmt.Println("Sending client public key", clientPublicKey.E)
+	clientPublicKeyBytes, err := json.Marshal(clientPublicKey)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal client public key")
+	}
+	if err := tcp.Send(registrarConn, clientPublicKeyBytes); err != nil {
 		return errors.Wrap(err, "failed to send client's public key")
 	}
 
@@ -50,10 +55,10 @@ func Client() error {
 
 	fmt.Println("Parsing registrar public key...")
 	registrarPublicKey := &rsa.PublicKey{}
-	if err := registrarPublicKey.FromBytes(registrarPubKeyBytes); err != nil {
+	if err := json.Unmarshal(registrarPubKeyBytes, registrarPublicKey); err != nil {
 		return errors.Wrap(err, "failed to parse registrar public key")
 	}
-	fmt.Println("Registrar public key", registrarPublicKey.E())
+	fmt.Println("Registrar public key", registrarPublicKey.E)
 
 	fmt.Print("Enter your message: ")
 	input, err := bufio.NewReader(os.Stdin).ReadString('\n')
@@ -69,7 +74,7 @@ func Client() error {
 	}
 
 	fmt.Println("Generating r...")
-	r, err := rand.Int(rand.Reader, registrarPublicKey.N())
+	r, err := rand.Int(rand.Reader, registrarPublicKey.N)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate r")
 	}
@@ -77,8 +82,8 @@ func Client() error {
 	fmt.Println("Generating blinded message (xr^eb)^da...")
 	reb := rsa.Encrypt(r, registrarPublicKey) // r^eb
 	blindedMsg := new(big.Int).Mul(m, reb)    // r^eb -> xr^eb
-	blindedMsg.Mod(blindedMsg, registrarPublicKey.N())
-	// blindedMsg = rsa.Sign(blindedMsg, clientPrivateKey) // xr^eb ->(xr^eb)^da
+	blindedMsg.Mod(blindedMsg, registrarPublicKey.N)
+	blindedMsg = rsa.Sign(blindedMsg, clientPrivateKey) // xr^eb ->(xr^eb)^da
 
 	fmt.Println("Sending blinded message to registrar", blindedMsg)
 	if err := tcp.Send(registrarConn, blindedMsg.Bytes()); err != nil {
@@ -94,7 +99,7 @@ func Client() error {
 	fmt.Println("Registrar signature ", signature)
 
 	fmt.Println("Generating rInverse...")
-	rInverse, err := rsa.ModInverse(r, registrarPublicKey.N()) // r^-1
+	rInverse, err := rsa.ModInverse(r, registrarPublicKey.N) // r^-1
 	if err != nil {
 		return errors.Wrap(err, "failed to calc modular inverse")
 	}
@@ -102,11 +107,15 @@ func Client() error {
 
 	fmt.Println("Unwraping signature...")
 	signature.Mul(signature, rInverse) // σ((xr^eb)^da) * r^-1 = σ(x)
-	signature.Mod(signature, registrarPublicKey.N())
+	signature.Mod(signature, registrarPublicKey.N)
 	fmt.Println("Signature ", signature)
 
-	fmt.Println("Sending registrar public key to counter", registrarPublicKey.E())
-	if err := tcp.Send(counterConn, registrarPublicKey.ToBytes()); err != nil {
+	fmt.Println("Sending registrar public key to counter", registrarPublicKey.E)
+	registrarPublicKeyBytes, err := json.Marshal(registrarPublicKey)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal registrar public key")
+	}
+	if err := tcp.Send(counterConn, registrarPublicKeyBytes); err != nil {
 		return errors.Wrap(err, "failed to send msg to counter")
 	}
 

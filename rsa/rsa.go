@@ -10,52 +10,17 @@ import (
 	"strings"
 )
 
-type PublicKey struct {
-	n *big.Int
-	e *big.Int
-}
-
-func (p *PublicKey) N() *big.Int {
-	return p.n
-}
-
-func (p *PublicKey) E() *big.Int {
-	return p.e
-}
-
-func (p *PublicKey) ToBytes() []byte {
-	var result []byte
-	result = append(result, p.n.Bytes()...)
-	result = append(result, '±')
-	result = append(result, p.e.Bytes()...)
-
-	return result
-}
-
-func (p *PublicKey) FromBytes(data []byte) error {
-	parts := bytes.SplitN(data, []byte{'±'}, 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid format")
+type (
+	PublicKey struct {
+		N *big.Int
+		E *big.Int
 	}
 
-	p.n = new(big.Int).SetBytes(parts[0])
-	p.e = new(big.Int).SetBytes(parts[1])
-
-	return nil
-}
-
-type PrivateKey struct {
-	n *big.Int
-	d *big.Int
-}
-
-func (p *PrivateKey) N() *big.Int {
-	return p.n
-}
-
-func (p *PrivateKey) D() *big.Int {
-	return p.d
-}
+	PrivateKey struct {
+		N *big.Int
+		D *big.Int
+	}
+)
 
 func GenerateKeys(bits int) (*PublicKey, *PrivateKey, error) {
 	p, err := generatePrime(bits)
@@ -91,24 +56,24 @@ func GenerateKeys(bits int) (*PublicKey, *PrivateKey, error) {
 			continue
 		}
 
-		return &PublicKey{n: n, e: e}, &PrivateKey{n: n, d: d}, nil
+		return &PublicKey{N: n, E: e}, &PrivateKey{N: n, D: d}, nil
 	}
 }
 
 func Encrypt(message *big.Int, publicKey *PublicKey) *big.Int {
-	return new(big.Int).Exp(message, publicKey.e, publicKey.n)
+	return new(big.Int).Exp(message, publicKey.E, publicKey.N)
 }
 
 func Decrypt(ciphertext *big.Int, privateKey *PrivateKey) *big.Int {
-	return new(big.Int).Exp(ciphertext, privateKey.d, privateKey.n)
+	return new(big.Int).Exp(ciphertext, privateKey.D, privateKey.N)
 }
 
 func Sign(message *big.Int, privateKey *PrivateKey) *big.Int {
-	return new(big.Int).Exp(message, privateKey.d, privateKey.n)
+	return new(big.Int).Exp(message, privateKey.D, privateKey.N)
 }
 
 func Verify(signature, message *big.Int, publicKey *PublicKey) bool {
-	decryptedSignature := new(big.Int).Exp(signature, publicKey.e, publicKey.n)
+	decryptedSignature := new(big.Int).Exp(signature, publicKey.E, publicKey.N)
 
 	return decryptedSignature.Cmp(message) == 0
 }

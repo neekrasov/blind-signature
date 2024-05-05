@@ -4,6 +4,7 @@ import (
 	"blind-signature/rsa"
 	"blind-signature/tcp"
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net"
@@ -11,7 +12,7 @@ import (
 
 func Registrar() error {
 	fmt.Println("Generate keys...")
-	registrarPublicKey, registrarPrivateKey, err := rsa.GenerateKeys(256)
+	registrarPublicKey, registrarPrivateKey, err := rsa.GenerateKeys(512)
 	if err != nil {
 		return fmt.Errorf("failed to generate keys: %w", err)
 	}
@@ -21,6 +22,7 @@ func Registrar() error {
 	if err != nil {
 		return fmt.Errorf("error starting server: %w", err)
 	}
+
 	defer ln.Close()
 	fmt.Println("Server started. Waiting for connections...")
 
@@ -45,14 +47,19 @@ func Registrar() error {
 
 			fmt.Println("Parsing client public key...")
 			clientPublicKey := &rsa.PublicKey{}
-			if err := clientPublicKey.FromBytes(clientPublicKeyBytes); err != nil {
+			if err := json.Unmarshal(clientPublicKeyBytes, clientPublicKey); err != nil {
 				fmt.Println("Failed to parse client public key: ", err)
 				return
 			}
-			fmt.Println("Client public key", clientPublicKey.E())
+			fmt.Println("Client public key", clientPublicKey.E)
 
-			fmt.Println("Sending registrar public key ", registrarPublicKey.E())
-			if err := tcp.Send(conn, registrarPublicKey.ToBytes()); err != nil {
+			fmt.Println("Sending registrar public key ", registrarPublicKey.E)
+			registrarPublicKeyBytes, err := json.Marshal(registrarPublicKey)
+			if err != nil {
+				fmt.Println("Failed to marshall registrar public key:", err)
+				return
+			}
+			if err := tcp.Send(conn, registrarPublicKeyBytes); err != nil {
 				fmt.Println("Error sending public key: ", err)
 				return
 			}
@@ -67,8 +74,7 @@ func Registrar() error {
 			blindedMsg := new(big.Int).SetBytes(blindedMsgBytes)
 			fmt.Println("User vote ", blindedMsg)
 
-			// blindedMsg = rsa.Encrypt(blindedMsg, registrarPublicKey) // (xr^eb)^da -> xr^eb
-
+			blindedMsg = rsa.Encrypt(blindedMsg, clientPublicKey) // (xr^eb)^da -> xr^eb
 			fmt.Println("Signing message...")
 			signature := rsa.Sign(blindedMsg, registrarPrivateKey) // σ(xr^eb) = (xr^eb)^db
 			fmt.Println("Signature ", signature)

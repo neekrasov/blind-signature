@@ -3,13 +3,14 @@ package main
 import (
 	"blind-signature/rsa"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 )
 
 func main() {
 	for {
-		test_mask()
+		test()
 	}
 }
 
@@ -36,7 +37,7 @@ func testSign() {
 	fmt.Println()
 
 	// Calc r^e
-	r, err := rand.Int(rand.Reader, clientPublicKey.N())
+	r, err := rand.Int(rand.Reader, clientPublicKey.N)
 	if err != nil {
 		fmt.Println("Failed to generate r:", err.Error())
 		return
@@ -47,7 +48,7 @@ func testSign() {
 
 	// Calc s = mr^e mod n
 	blindedMsg := new(big.Int).Mul(msg, r)
-	blindedMsg.Mod(blindedMsg, clientPublicKey.N())
+	blindedMsg.Mod(blindedMsg, clientPublicKey.N)
 	fmt.Println("blindedMsg = mr^e mod n = ", blindedMsg)
 	fmt.Println()
 
@@ -56,7 +57,7 @@ func testSign() {
 	fmt.Println("sign = blindedMsg^d mod n = ", sign)
 
 	// Calc r^-1
-	rInverse, err := rsa.ModInverse(r, clientPublicKey.N())
+	rInverse, err := rsa.ModInverse(r, clientPublicKey.N)
 	if err != nil {
 		fmt.Println("Failed to get inverse r", err)
 	}
@@ -64,12 +65,12 @@ func testSign() {
 
 	// Calc blindedMsg*r^-1 mod n
 	originalMsg := new(big.Int).Mul(blindedMsg, rInverse)
-	originalMsg.Mod(originalMsg, clientPublicKey.N())
+	originalMsg.Mod(originalMsg, clientPublicKey.N)
 	fmt.Println("originalMsg = blindedMsg * r^-1 mod n = ", originalMsg)
 
 	// Calc sign*r^-1 mod n
 	originalSign := new(big.Int).Mul(sign, rInverse)
-	originalSign.Mod(originalSign, clientPublicKey.N())
+	originalSign.Mod(originalSign, clientPublicKey.N)
 	fmt.Println("original sign = sign * r^-1 mod n = ", originalSign)
 
 	if !rsa.Verify(originalSign, msg, registrarPublicKey) {
@@ -94,7 +95,7 @@ func testInverse() {
 	fmt.Println("msg = ", msg)
 
 	// Calc r^e
-	r, err := rand.Int(rand.Reader, publicKey.N())
+	r, err := rand.Int(rand.Reader, publicKey.N)
 	if err != nil {
 		fmt.Println("Failed to generate r:", err.Error())
 		return
@@ -105,11 +106,11 @@ func testInverse() {
 
 	// Calc s = mr^e mod n
 	blindedMsg := new(big.Int).Mul(msg, r)
-	blindedMsg.Mod(blindedMsg, publicKey.N())
+	blindedMsg.Mod(blindedMsg, publicKey.N)
 	fmt.Println("blindedMsg = mr^e mod n = ", blindedMsg)
 
 	// Calc r^-1
-	rInverse, err := rsa.ModInverse(r, publicKey.N())
+	rInverse, err := rsa.ModInverse(r, publicKey.N)
 	if err != nil {
 		fmt.Println("Failexd to get inverse r", err)
 	}
@@ -117,12 +118,12 @@ func testInverse() {
 
 	// Calc s*r^-1 mod n
 	originalMsg := new(big.Int).Mul(blindedMsg, rInverse)
-	originalMsg.Mod(originalMsg, publicKey.N())
+	originalMsg.Mod(originalMsg, publicKey.N)
 	fmt.Println("originalMsg = blindedMsg * r^-1 mod n = ", originalMsg)
 }
 
 func test() {
-	publicKey, privateKey, err := rsa.GenerateKeys(128)
+	publicKey, privateKey, err := rsa.GenerateKeys(1024)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -144,7 +145,8 @@ func test() {
 	fmt.Println("msg=", msg, "encrypted=", encrypted, "decrypted=", decrypted, "signature=", signature, "verified = ", verified)
 
 	fromBytesTest := &rsa.PublicKey{}
-	if err := fromBytesTest.FromBytes(publicKey.ToBytes()); err != nil {
+	bytes, _ := json.Marshal(publicKey)
+	if err := json.Unmarshal(bytes, fromBytesTest); err != nil {
 		fmt.Println("error parsing public key", err.Error())
 	}
 }
@@ -169,14 +171,14 @@ func test_mask() {
 		return
 	}
 
-	r, err := rand.Int(rand.Reader, registrarPublicKey.N()) // r
+	r, err := rand.Int(rand.Reader, registrarPublicKey.N) // r
 	if err != nil {
 		fmt.Println("Failed to generate r:", err.Error())
 		return
 	}
 	reb := rsa.Encrypt(r, registrarPublicKey) // r^eb
 	blindedMsg := new(big.Int).Mul(msg, reb)  // r^eb -> xr^eb
-	blindedMsg.Mod(blindedMsg, registrarPublicKey.N())
+	blindedMsg.Mod(blindedMsg, registrarPublicKey.N)
 
 	fmt.Println(blindedMsg)
 	// blindedMsg = rsa.Sign(blindedMsg, clientPrivateKey) // xr^eb -> (xr^eb)^da
@@ -184,14 +186,14 @@ func test_mask() {
 	fmt.Println(blindedMsg)
 	signedMsg := rsa.Sign(blindedMsg, registrarPrivateKey)
 
-	rInverse, err := rsa.ModInverse(r, registrarPublicKey.N())
+	rInverse, err := rsa.ModInverse(r, registrarPublicKey.N)
 	if err != nil {
 		panic(err)
 	}
 
 	signature := new(big.Int).Set(signedMsg)
 	signature.Mul(signature, rInverse)
-	signature.Mod(signature, registrarPublicKey.N())
+	signature.Mod(signature, registrarPublicKey.N)
 
 	if !rsa.Verify(signature, msg, registrarPublicKey) {
 		fmt.Println("verifiing digital signature fail: ", err)

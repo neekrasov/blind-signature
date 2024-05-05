@@ -4,6 +4,7 @@ import (
 	"blind-signature/rsa"
 	"blind-signature/tcp"
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net"
@@ -42,11 +43,11 @@ func Counter() error {
 
 			fmt.Println("Parsing registrar public key...")
 			registrarPublicKey := &rsa.PublicKey{}
-			if err := registrarPublicKey.FromBytes(registrarPubKeyBytes); err != nil {
+			if err := json.Unmarshal(registrarPubKeyBytes, registrarPublicKey); err != nil {
 				fmt.Println("Failed to parse registrar public key:", err.Error())
 				return
 			}
-			fmt.Println("Registrar public key ", registrarPublicKey.E())
+			fmt.Println("Registrar public key ", registrarPublicKey.E)
 
 			fmt.Println("Getting vote...")
 			var voteBytes []byte
