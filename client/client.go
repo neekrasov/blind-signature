@@ -1,7 +1,7 @@
 package main
 
 import (
-	rsa "blind-signature/rsa"
+	"blind-signature/rsa"
 	"blind-signature/tcp"
 	"bufio"
 	"crypto/rand"

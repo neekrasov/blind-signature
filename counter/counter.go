@@ -56,9 +56,8 @@ func Counter() error {
 				return
 			}
 			vote := string(voteBytes)
-			fmt.Println("Vote ", vote)
 
-			fmt.Println("Hashing vote...")
+			fmt.Println("Hashing vote ", vote)
 			m, err := rsa.HashSHA256(vote)
 			if err != nil {
 				fmt.Println("Failed to hash sha-256 vote", err)
